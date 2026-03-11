@@ -21,8 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "uart_log.h"
-#include "sensor.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,49 +99,42 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   for(int i = 0; i < 3; i++) {
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-      HAL_Delay(500);
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-      HAL_Delay(500);
-  }
-  UART_Print(&huart1, "[SISTEM] TUFAN Sensor Dashboard baslatiliyor...\r\n");
-  UART_Print(&huart1, "[SISTEM] Hazir. Olcum icin butona basiniz.\r\n");
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_Delay(500);
+}
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-   if (HAL_GPIO_ReadPin(BTN_MEASURE_GPIO_Port, BTN_MEASURE_Pin) == GPIO_PIN_SET) {
-    HAL_Delay(50);
-    if (HAL_GPIO_ReadPin(BTN_MEASURE_GPIO_Port, BTN_MEASURE_Pin) == GPIO_PIN_SET) {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-        HAL_ADC_Start(&hadc1);
-        if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
-            adc_raw = HAL_ADC_GetValue(&hadc1);
-            voltage = Sensor_ConvertToVoltage(adc_raw);
-            battery_perc = Sensor_ConvertToPercentage(adc_raw);
-            measurement_count++;
-            if (voltage < 0.0f || voltage > 3.3f) {
-                UART_Print(&huart1, "[UYARI] ADC degeri aralik disi!\r\n");
-            }
-            UART_Print(&huart1, "======== TUFAN SENSOR OKUMASI ========\r\n");
-            UART_PrintFloat(&huart1, "Gerilim: ", voltage, 2);
-            UART_PrintFloat(&huart1, "Batarya Sim: ", battery_perc, 1);
-        }
-        else {
-            UART_Print(&huart1, "[HATA] ADC Zaman Asimi!\r\n");
-        }
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-        while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET);
-    }
-}
     /* USER CODE END WHILE */
-
+    if (HAL_GPIO_ReadPin(BTN_MEASURE_GPIO_Port, BTN_MEASURE_Pin) == GPIO_PIN_SET) {
+        HAL_Delay(50);
+        if (HAL_GPIO_ReadPin(BTN_MEASURE_GPIO_Port, BTN_MEASURE_Pin) == GPIO_PIN_SET) 
+        {
+            HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, GPIO_PIN_SET);HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, GPIO_PIN_RESET); // Ölçüm bitti, LED'i söndür [cite: 38, 58]
+            while (HAL_GPIO_ReadPin(BTN_MEASURE_GPIO_Port, BTN_MEASURE_Pin) == GPIO_PIN_SET);
+        }
     /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
-}
+  HAL_ADC_Start(&hadc1);
+  if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
+      uint16_t ham_deger = HAL_ADC_GetValue(&hadc1); 
+      float gerilim = (ham_deger / 4095.0f) * 3.3f;
+      float yuzde = (ham_deger / 4095.0f) * 100.0f;
+      if (gerilim < 0.0f || gerilim > 3.3f) {
+          // Burada UART üzerinden [UYARI] mesajı gönderilecek 
+      }
+  } 
+  else {
+      // ADC Zaman Aşımı Hatası (Timeout) 
+      // Burada UART üzerinden hata mesajı gönderilecek ve ölçüm atlanacak 
+  }
+    /* USER CODE END 3 */
+  }}
 
 /**
   * @brief System Clock Configuration
@@ -342,4 +334,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
